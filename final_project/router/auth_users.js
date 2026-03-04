@@ -5,24 +5,83 @@ const regd_users = express.Router();
 
 let users = [];
 
-const isValid = (username)=>{ //returns boolean
-//write code to check is the username is valid
+const isValid = (username) => { 
+  // Kiểm tra xem username đã tồn tại trong mảng users hay chưa
+  let userswithsamename = users.filter((user) => user.username === username);
+  return userswithsamename.length > 0;
 }
 
-const authenticatedUser = (username,password)=>{ //returns boolean
-//write code to check if username and password match the one we have in records.
+const authenticatedUser = (username, password) => { 
+  // Kiểm tra xem username và password có khớp với dữ liệu hệ thống không
+  let validusers = users.filter((user) => user.username === username && user.password === password);
+  return validusers.length > 0;
 }
 
-//only registered users can login
-regd_users.post("/login", (req,res) => {
-  //Write your code here
-  return res.status(300).json({message: "Yet to be implemented"});
+// Chỉ những người dùng đã đăng ký mới có thể đăng nhập
+regd_users.post("/login", (req, res) => {
+  const username = req.body.username;
+  const password = req.body.password;
+
+  // Kiểm tra xem người dùng có gửi đủ thông tin không
+  if (!username || !password) {
+    return res.status(400).json({ message: "Vui lòng cung cấp cả username và password." });
+  }
+
+  // Nếu thông tin đăng nhập hợp lệ
+  if (authenticatedUser(username, password)) {
+    // Tạo JWT token có thời hạn 1 giờ
+    let accessToken = jwt.sign({
+      username: username
+    }, 'access', { expiresIn: 60 * 60 });
+
+    // Lưu token và username vào session (yêu cầu bạn đã setup express-session ở file index.js)
+    req.session.authorization = {
+      accessToken, 
+      username
+    };
+
+    return res.status(200).send("User successfully logged in");
+  } else {
+    return res.status(401).json({ message: "Invalid credentials. Check username and password." });
+  }
 });
 
-// Add a book review
+// Thêm hoặc cập nhật một đánh giá sách
 regd_users.put("/auth/review/:isbn", (req, res) => {
-  //Write your code here
-  return res.status(300).json({message: "Yet to be implemented"});
+  const isbn = req.params.isbn;
+  const review = req.body.review || req.query.review; // Lấy nội dung review từ body hoặc query
+  
+  // Lấy username từ session đã được lưu ở bước login
+  const username = req.session.authorization.username;
+
+  // Tìm sách theo ISBN
+  if (books[isbn]) {
+    if (review) {
+      // Thêm hoặc cập nhật review của user này
+      books[isbn].reviews[username] = review;
+      return res.status(200).send(`The review for the book with ISBN ${isbn} has been added/updated.`);
+    } else {
+      return res.status(400).json({ message: "Review content is required." });
+    }
+  } else {
+    return res.status(404).json({ message: "Book not found." });
+  }
+});
+
+regd_users.delete("/auth/review/:isbn", (req, res) => {
+  const isbn = req.params.isbn;
+  const username = req.session.authorization.username;
+
+  if (books[isbn]) {
+    if (books[isbn].reviews[username]) {
+      delete books[isbn].reviews[username];
+      return res.status(200).send(`Review for the book with ISBN ${isbn} posted by the user ${username} deleted.`);
+    } else {
+      return res.status(404).json({ message: "Review not found for this user." });
+    }
+  } else {
+    return res.status(404).json({ message: "Book not found." });
+  }
 });
 
 module.exports.authenticated = regd_users;
