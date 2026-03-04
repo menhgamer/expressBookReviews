@@ -47,25 +47,29 @@ regd_users.post("/login", (req, res) => {
 });
 
 // Thêm hoặc cập nhật một đánh giá sách
-regd_users.put("/auth/review/:isbn", (req, res) => {
-  const isbn = req.params.isbn;
-  const review = req.body.review || req.query.review; // Lấy nội dung review từ body hoặc query
-  
-  // Lấy username từ session đã được lưu ở bước login
+regd_users.put("/auth/review", (req, res) => {
+
+  const isbn = req.body.isbn;
+  const review = req.body.review;
   const username = req.session.authorization.username;
 
-  // Tìm sách theo ISBN
+  if (!isbn || !review) {
+    return res.status(400).json({ message: "ISBN and review are required." });
+  }
+
   if (books[isbn]) {
-    if (review) {
-      // Thêm hoặc cập nhật review của user này
-      books[isbn].reviews[username] = review;
-      return res.status(200).send(`The review for the book with ISBN ${isbn} has been added/updated.`);
-    } else {
-      return res.status(400).json({ message: "Review content is required." });
-    }
+
+    books[isbn].reviews[username] = review;
+
+    return res.status(200).json({
+      message: `The review for the book with ISBN ${isbn} has been added/updated.`,
+      reviews: books[isbn].reviews
+    });
+
   } else {
     return res.status(404).json({ message: "Book not found." });
   }
+
 });
 
 regd_users.delete("/auth/review/:isbn", (req, res) => {
