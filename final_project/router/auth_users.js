@@ -47,14 +47,14 @@ regd_users.post("/login", (req, res) => {
 });
 
 // Thêm hoặc cập nhật một đánh giá sách
-regd_users.put("/auth/review", (req, res) => {
+regd_users.put("/auth/review/:isbn", (req, res) => {
 
-  const isbn = req.body.isbn;
+  const isbn = req.params.isbn;   // 👈 lấy từ URL
   const review = req.body.review;
   const username = req.session.authorization.username;
 
-  if (!isbn || !review) {
-    return res.status(400).json({ message: "ISBN and review are required." });
+  if (!review) {
+    return res.status(400).json({ message: "Review is required." });
   }
 
   if (books[isbn]) {
